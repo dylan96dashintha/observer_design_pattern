@@ -1,31 +1,36 @@
 package pub_sub
 
-// MonitoringAgent Subject interface
-type MonitoringAgent interface {
-	RegisterObserver(observer chan AlertingAgentChan)
-	DeRegisterObserver(observer chan AlertingAgentChan)
-	CheckMetrics(metric string, value float64)
+import "sync"
+
+type broker struct {
+	subscribers map[string][]chan string
+	lock        sync.RWMutex
 }
 
-type Grafana struct {
-	AlertingAgentChannelList []chan AlertingAgentChan
-	MemoryThreshold          float64
-}
-
-func (g *Grafana) RegisterObserver(observerChan chan AlertingAgentChan) {
-	g.AlertingAgentChannelList = append(g.AlertingAgentChannelList, observerChan)
-}
-
-func (g *Grafana) DeRegisterObserver(alertChan chan AlertingAgentChan) {
-	for i, observer := range g.AlertingAgentChannelList {
-		if observer == alertChan {
-			g.AlertingAgentChannelList = append(g.AlertingAgentChannelList[:i], g.AlertingAgentChannelList[i+1:]...)
-			break
-		}
+func NewBroker() *broker {
+	return &broker{
+		subscribers: make(map[string][]chan string),
 	}
 }
 
-func (g *Grafana) CheckMetrics(metric string, value float64) {
-	if g.MemoryThreshold < value {
+// Subscribe to a topic
+func (eb *broker) Subscribe(topic string) <-chan string {
+	eb.lock.Lock()
+	defer eb.lock.Unlock()
+
+	ch := make(chan string)
+	eb.subscribers[topic] = append(eb.subscribers[topic], ch)
+	return ch
+}
+
+// Publish a message to all subscribers of a topic
+func (eb *broker) Publish(topic string, msg string) {
+	eb.lock.RLock()
+	defer eb.lock.RUnlock()
+
+	for _, ch := range eb.subscribers[topic] {
+		go func(c chan string) {
+			c <- msg
+		}(ch)
 	}
 }

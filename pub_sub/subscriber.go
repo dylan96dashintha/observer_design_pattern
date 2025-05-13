@@ -2,19 +2,16 @@ package pub_sub
 
 import "fmt"
 
-// AlertingAgentChan Observer interface
-type AlertingAgentChan interface {
-	NotifyChan(metric string, value float64)
+// Slack listens for alerts
+func Slack(sub <-chan string) {
+	for msg := range sub {
+		fmt.Println("[Slack] spike, msg: ", msg)
+	}
 }
 
-type Slack struct{}
-
-type GoogleSpace struct{}
-
-func (s Slack) I(metric string, value float64) {
-	fmt.Printf("[Slack]  %s spike: %.2f%%\n", metric, value)
-}
-
-func (g GoogleSpace) NotifyChan(metric string, value float64) {
-	fmt.Printf("[GoogleSpace]  %s spike: %.2f%%\n", metric, value)
+// GoogleSpace listens for alerts
+func GoogleSpace(sub <-chan string) {
+	for msg := range sub {
+		fmt.Println("[GoogleSpace] spike, msg:", msg)
+	}
 }
